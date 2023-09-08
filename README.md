@@ -134,3 +134,70 @@ Date:   Tue Mar 28 00:26:53 2023 +0300
 Staging area также называют **index** (англ. «каталог») или **cache** (англ. «кеш»), а состояние файла `staged` иногда называют `indexed` или `cached`.
 - `tracked` (отслеживаемый) - Состояние `tracked` — это противоположность `untracked`. Оно довольно широкое по смыслу: в него попадают файлы, которые уже были зафиксированы с помощью `git commit`, а также файлы, которые были добавлены в staging area командой `git add`. То есть все файлы, в которых Git так или иначе отслеживает изменения.
 - `modified` (изменённый) - Состояние `modified` означает, что Git сравнил содержимое файла с последней сохранённой версией и нашёл отличия. Например, файл был закоммичен и после этого изменён.
+
+#### Сто шагов назад (restore/reset)
+
+- На случай, если необходимо выполнить анстейджинг (unstage) какого либо файла в выводе команды `git status` есть подсказка `use "git restore --staged <file>..." to unstage`.
+
+Например:
+```bash
+$ touch example.txt # создали ненужный файл
+$ git add example.txt # добавили его в staged
+
+$ git status # проверили статус
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        new file:   example.txt
+
+$ git restore --staged example.txt
+$ git status # проверили статус
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        example.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+# файл example.txt из staged вернулся обратно в untracked
+```
+Вызов `git restore --staged example.txt` перевёл `example.txt` из `staged` обратно в `untracked`.
+
+Чтобы сбросить все файлы в одной директории из `staged` обратно в `untracked`/`modified` можно использовать команду `git restore --staged .`.
+Точка (` . `) здесь обозначает `текущую директорию (папку)`.
+
+- Если нужно откатить уже закоммиченные изменения - используется команда `git reset --hard <commit hash>` где commit hash это хеш коммита (его уникальный идентификатор). Простым языком эта команда вернёт всё к состоянию `указанного коммита` и удалит все последующие `после него`.
+```bash
+$ git log --oneline # хеш можно найти в истории
+7b972f5 (HEAD -> master) style: добавить комментарии, расставить отступы
+b576d89 feat: добавить массив Expenses и цикл для добавления трат # вот сюда и вернёмся
+4b58962 refactor: разделить analyzeExpenses() на countSum() и saveExpenses()
+
+$ git reset --hard b576d89
+# теперь мы на этом коммите
+HEAD is now at b576d89 feat: добавить массив Expenses и цикл для добавления трат
+```
+Теперь коммит b576d89 стал последним: вся дальнейшая разработка будет вестись от него. Файл также вернулся к тому состоянию, в котором был в момент этого коммита. А коммит 7b972f5 Git просто удалил. Это можно проверить, снова запросив лог. Он покажет следующее.
+```bash
+$ git log --oneline
+b576d89 (HEAD -> master) feat: добавить массив Expenses и цикл для добавления трат
+4b58962 refactor: разделить analyzeExpenses() на countSum() и saveExpenses()
+```
+
+- Если нужно откатить изменения, которые ещё не попали ни в `staging`, ни в коммит - `git restore <file>`.
+```bash
+# случайно изменили файл example.txt
+$ git status
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+          modified:   example.txt
+
+$ git restore example.txt
+$ git status
+On branch main
+nothing to commit, working tree clean
+```
+
+Изменения в файле «откатятся» до последней версии, которая была сохранена через `git commit` или `git add`.
+
+Главное помнить, что `restore` работает только с файлами, а `reset` может работать с коммитами (ну и много чего ещё может).
